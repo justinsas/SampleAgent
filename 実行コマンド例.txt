@@ -1,5 +1,0 @@
-mvn exec:java -Dci360.gatewayHost=extapigwservice-demo.cidemo.sas.com -Dci360.tenantID=cdfcdb975400013bfd3c345e -Dci360.clientSecret=MTA1MTFpYjg0aG5maTRjNzllaGdtNmhtNjlmMmFiZzc5 -Dlogback.configurationFile=logback.xml -Dexec.mainClass="sample.SampleAgent" -Ddir="C:\30.CNS Related\mkt-agent-sdk-1.1906.1904251112\sample_agent" -Dsource="sample"
-
-
-
-Å¶-Ddir="C:\mkt-extapigw-sdk\sample_agent" -Dsource="sample" Çí«â¡
