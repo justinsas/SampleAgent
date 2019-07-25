@@ -1,18 +1,17 @@
 package sample;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 
 import org.json.JSONObject;
 
-import com.clivern.racter.BotPlatform;
-import com.clivern.racter.senders.templates.MessageTemplate;
 import com.sas.mkt.agent.sdk.CI360Agent;
 import com.sas.mkt.agent.sdk.CI360AgentException;
 import com.sas.mkt.agent.sdk.CI360StreamInterface;
@@ -35,7 +34,7 @@ import com.sas.mkt.agent.sdk.ErrorCode;
  * @author magibs
  *
  */
-public class SampleAgent {
+public class FileAgent {
 
 	static boolean exiting=false;
 	public static void main(String[] args) {
@@ -47,7 +46,8 @@ public class SampleAgent {
 					Thread eventThread=new Thread() {
 						public void run() {
 							System.out.println("Event: " + event);
-							sendMessage(event);
+							exportCsv(event); //ファイル操作
+							//sendMessage(event);
 							if (event.startsWith("CFG")) {
 								throw new RuntimeException("oops");
 							}
@@ -154,66 +154,69 @@ public class SampleAgent {
 		}
 
 	}
-	
+
 /**
- * Facebook Messenger
+ * ファイル操作
  */	
-	public static void sendMessage(String event) {
-		try {
-			//jsonパース
+	public static void exportCsv(String event){
+        try { 
+        	//jsonパース
         	JSONObject jsonObject = new JSONObject(event);
-			String subjectID = jsonObject.getJSONObject("attributes").getString("subject_id");
-			String eventName = jsonObject.getJSONObject("attributes").getString("eventName");
-			
-			//Creativeコンテンツ
+        	String eventName = jsonObject.getJSONObject("attributes").getString("eventName");
+            System.out.println(eventName);
+        	
         	String creativeContent = jsonObject.getJSONObject("attributes").getString("creative_content");
-			int jpgStart = creativeContent.indexOf("src") ;
-			int jpgEnd = creativeContent.indexOf(".jpg");
-			
-			creativeContent = creativeContent.substring(jpgStart + 5, jpgEnd + 4);
-		
-			Map<String, String> options = new HashMap<String, String>();
-			
-			//propertiesディレクトリ・ファイル
+        	System.out.println("creativeContent="+creativeContent);
+        	
+        	//propertiesディレクトリ・ファイル
         	String dir=System.getProperty("dir");
         	String source=System.getProperty("source");
         	URLClassLoader urlLoader = new URLClassLoader(new URL[]{new File(dir).toURI().toURL()});
         	ResourceBundle bundle = ResourceBundle.getBundle(source, Locale.getDefault(), urlLoader);
         	        	
 			// 出力ファイルの設定 
-        	String app_id = bundle.getString("app_id");
-        	String verify_token = bundle.getString("verify_token");
-        	String page_access_token = bundle.getString("page_access_token");
+        	String separateFileByEventNm = bundle.getString("separateFileByEventNm");
+        	String outputPath = bundle.getString("outputPath");
+        	String outputFileName = bundle.getString("outputFileName");
+        	
+        	if(separateFileByEventNm.equals("1")){
+        		outputFileName = eventName + "_" + outputFileName;
+            	System.out.println(separateFileByEventNm);        		
+        	}
+        	File outputFile = new File(outputPath + outputFileName);        		
+        	
+			// 拡張子取得 
+			int extensionIndex = outputFileName.lastIndexOf("."); 
+			String extension = outputFileName.substring(extensionIndex);
 
-			options.put("app_id", app_id);
-			options.put("verify_token", verify_token);
-			options.put("page_access_token", page_access_token);
-			BotPlatform platform = new BotPlatform(options);
-			
-			MessageTemplate message_tpl = platform.getBaseSender().getMessageTemplate();
-			message_tpl.setRecipientId(subjectID);
-			//Send text campaign
-			if (eventName.equals("FBMsgOutgoing_1")) {
-				message_tpl.setMessageText("Text campaign information from CI360 agent, buy 1 get 1 free.");
-				/*
-				message_tpl.setMessageText("Buy 1 get 1 free from CI360 agent!");
-				message_tpl.setQuickReply("text", "image campaign", "text_reply_pizza1_click", "http://static.wixstatic.com/media/f0a6df_9ae4c70963244e16ba0d89d021407335.png");
-				message_tpl.setQuickReply("text", "image campaign", "text_reply_pizza2_click", "http://static.wixstatic.com/media/f0a6df_9ae4c70963244e16ba0d89d021407335.png");
-				message_tpl.setQuickReply("text", "image campaign", "text_reply_pizza3_click", "http://static.wixstatic.com/media/f0a6df_9ae4c70963244e16ba0d89d021407335.png");
-				platform.getBaseSender().send(message_tpl);
-				*/
-			} 
-			//Send image campaign
-			else if (eventName.equals("FBMsgOutgoing_2")) {
-				message_tpl.setAttachment("image", creativeContent, false);
-				message_tpl.setNotificationType("SILENT_PUSH");
+			// 出力ファイル名の作成（枝番あり） 
+			String outputFileBranch = outputFileName.substring(0, extensionIndex) + "_";
+
+			// 同名ファイルが存在する場合、出力ファイルに枝番を付与する処理 
+			int branch = 0; 
+			while (outputFile.exists()) { 
+			    branch++; 
+			    outputFile = new File(outputPath + outputFileBranch + branch + extension); 
 			}
-			platform.getBaseSender().send(message_tpl);
-			System.out.println(eventName + "が実行されました。");
-		} catch (Exception ex) {
+
+            // 出力ファイルの作成
+            FileWriter f = new FileWriter(outputFile.getAbsolutePath(), false);
+        	BufferedWriter b = new BufferedWriter(f);  
+        	
+            // 内容をセットする 
+        	b.write(event);
+        	b.newLine(); //改行
+        	
+            // ファイルに書き出し閉じる
+            b.close();
+ 
+            System.out.println("ファイル出力完了！");
+ 
+        } catch (IOException ex) {
             ex.printStackTrace();
             System.out.println("ファイル出力に失敗しました。");
         }
-	}
+         
+    }
 }
 
