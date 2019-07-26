@@ -31,7 +31,7 @@ import com.sas.mkt.agent.sdk.ErrorCode;
  * Following the "bulk" command is the application ID to use. See
  * {@link CI360Agent#requestBulkEventURL(String)}.
  * 
- * @author magibs
+ * @author Justin
  *
  */
 public class LineAgent {
@@ -159,7 +159,7 @@ public class LineAgent {
 	}
 
 	/**
-	 * Line Message
+	 * Send Line Message
 	 */
 	public static void sendLineMessage(String event) {
 		try {
@@ -187,20 +187,28 @@ public class LineAgent {
 
 			if (text.equals("push campaign")) {
 				line = new LinePusher();
-				template.setMessage_type("image");
 				template.setRecipientId(capitalize(subjectID));
+				template.setMessage_type("image");
 				template.setImage_url(creativeContent);
 			} else {
 				line = new LineReplyer();
-				template.setMessage_type("text");
 				template.setReply_token(replyToken);
-				int emojiNumber;
-				try {
-					emojiNumber = Integer.parseInt(text.substring(0, text.indexOf(" emoji")));
-				} catch (Exception e) {
-					emojiNumber = 5;
+				if (text.equals("pull campaign")) {
+					template.setMessage_type("image");
+					template.setImage_url(creativeContent);
+				} else if (text.equals("stamp")) {
+					template.setMessage_type("sticker");
+					template.setStamp_val(createStamp());
+				} else {
+					template.setMessage_type("text");
+					int emojiNumber;
+					try {
+						emojiNumber = Integer.parseInt(text.substring(0, text.indexOf("emoji")).trim());
+					} catch (Exception e) {
+						emojiNumber = 5;
+					}
+					template.setMessageText(createEmoji(emojiNumber));
 				}
-				template.setMessageText(createEmoji(emojiNumber));
 			}
 			line.setAccessToken(access_token);
 
@@ -211,20 +219,44 @@ public class LineAgent {
 		}
 	}
 
+    /**
+     * Capitalize first character
+     *
+     * @param line  Input value
+     */
 	private static String capitalize(final String line) {
 		return Character.toUpperCase(line.charAt(0)) + line.substring(1);
 	}
 
+    /**
+     * Create emoji randomly
+     *
+     * @param emojiNumber  number of emoji need to be created
+     */
 	private static String createEmoji(int emojiNumber) {
 		String[] emojiList = { "78", "79", "7A", "7B", "7C", "7D", "7E", "7F", "8C", "8D", "8E", "8F", "91", "92", "93",
 				"94", "95", "9A", "9B", "9C", "9D", "05", "06", "07", "08", "09", "0A", "0B", "0C", "0D", "B0", "B1", "B2", "B3", "3B", "3C", "3D", "35" };
 		int emojiLength = emojiList.length;
 		Random rnd = new Random();
-		String retEmoji = "";
+		String retEmoji = "Emoji sent from CI360: ";
 		for (int i = 0; i < emojiNumber; i++) {
 			int val = rnd.nextInt(emojiLength);
 			retEmoji += emoji + emojiList[val];
 		}
 		return retEmoji;
+	}
+	
+    /**
+     * Create stamp randomly
+     *
+     */
+	private static String createStamp() {
+		String[] stampList = { "52002734", "52002735", "52002736", "52002737", "52002738", "52002739", "52002740", "52002741", "52002742", "52002743", "52002744", "52002745", "52002746", "520027447"};
+		int stampLength = stampList.length;
+		Random rnd = new Random();
+		String retStamp = "";
+		int val = rnd.nextInt(stampLength);
+		retStamp = stampList[val];
+		return retStamp;
 	}
 }
